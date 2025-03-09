@@ -66,7 +66,7 @@ MODULE_PARM_DESC(debug_hid, "(u8) Debug HID reports. 0: disable, 1: enable.");
 static int share_btn = KEY_F12;  // Default to F12 (88)
 module_param(share_btn, int, 0444);
 MODULE_PARM_DESC(share_btn, "Set keycode used for screenshots. Defaults to 88 (F12 key)");
-static int BTN_SHARE;
+int BTN_SHARE;
 
 
 static struct {
