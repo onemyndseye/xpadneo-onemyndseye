@@ -49,7 +49,6 @@ do { \
 
 /* button aliases */
 #define BTN_PADDLES(b) (BTN_TRIGGER_HAPPY5+(b))
-#define BTN_SHARE      KEY_F12
 #define BTN_XBOX       BTN_MODE
 
 /* module parameter "trigger_rumble_mode" */
