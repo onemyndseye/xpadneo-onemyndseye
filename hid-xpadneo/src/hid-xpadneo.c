@@ -10,6 +10,7 @@
 
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/string.h>
 
 #include "xpadneo.h"
 
@@ -61,6 +62,12 @@ MODULE_PARM_DESC(disable_shift_mode,
 static bool param_debug_hid = 0;
 module_param_named(debug_hid, param_debug_hid, bool, 0644);
 MODULE_PARM_DESC(debug_hid, "(u8) Debug HID reports. 0: disable, 1: enable.");
+
+static int share_btn = KEY_F12;  // Default to F12 (88)
+module_param(share_btn, int, 0444);
+MODULE_PARM_DESC(share_btn, "Set keycode used for screenshots. Defaults to 88 (F12 key)");
+static int BTN_SHARE;
+
 
 static struct {
 	char *args[17];
@@ -150,7 +157,7 @@ static const struct usage_map xpadneo_usage_maps[] = {
 	USAGE_MAP(0x9000B, MAP_STATIC, EV_KEY, BTN_XBOX),	/* Xbox */
 
 	/* fixup the Share button */
-	USAGE_MAP(0x9000C, MAP_STATIC, EV_KEY, BTN_SHARE),	/* Share */
+	/*USAGE_MAP(0x9000C, MAP_STATIC, EV_KEY, BTN_SHARE),	/* Share */
 
 	/* fixup code "Sys Main Menu" from Windows report descriptor */
 	USAGE_MAP(0x10085, MAP_STATIC, EV_KEY, BTN_XBOX),
@@ -1043,14 +1050,15 @@ static int xpadneo_event(struct hid_device *hdev, struct hid_field *field,
 			}
 		}
 		goto stop_processing;
-	} else if ((usage->type == EV_KEY) && (usage->code == BTN_SHARE)) {
-		/* move the Share button to the keyboard device */
-		if (!keyboard)
-			goto keyboard_missing;
-		input_report_key(keyboard, BTN_SHARE, value);
-		xdata->keyboard_sync = true;
-		goto stop_processing;
+	} else if ((usage->type == EV_KEY) && (usage->hid == 0x9000C)) {
+	       /* dynamically map the Share button using the user-defined BTN_SHARE keycode */
+	       if (!keyboard)
+	               goto keyboard_missing;
+	       input_report_key(keyboard, BTN_SHARE, value);
+	       xdata->keyboard_sync = true;
+	       goto stop_processing;
 	} else if (xdata->xbox_button_down && (usage->type == EV_KEY)) {
+
 		if (!(xdata->quirks & XPADNEO_QUIRK_USE_HW_PROFILES)) {
 			switch (usage->code) {
 			case BTN_A:
@@ -1406,6 +1414,15 @@ static int __init xpadneo_init(void)
 
 	if (param_trigger_rumble_mode == 1)
 		pr_warn("hid-xpadneo trigger_rumble_mode=1 is unknown, defaulting to 0\n");
+
+	if (share_btn <= 0 || share_btn > 255) {
+		pr_warn("Invalid share_btn keycode: %d. Using default KEY_F12.\n", share_btn);
+		BTN_SHARE = KEY_F12;
+	} else {
+		BTN_SHARE = share_btn;
+	}
+	pr_info("BTN_SHARE set to keycode: %d\n", BTN_SHARE);
+
 
 	xpadneo_rumble_wq = alloc_ordered_workqueue("xpadneo/rumbled", WQ_HIGHPRI);
 	if (xpadneo_rumble_wq) {
